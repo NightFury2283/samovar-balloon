@@ -1,4 +1,4 @@
-"""Тесты для самоварного аэростата «Пыхтун» (SPEC.md v0.1, TEST_CASES.md v0.1).
+"""Тесты для самоварного аэростата «Пыхтун» (SPEC.md v0.2, TEST_CASES.md v0.2).
 
 Запуск из корня репозитория:
 
@@ -9,6 +9,7 @@
 Каждый тест содержит ID своего тест-кейса в имени и в docstring.
 """
 
+import math
 import unittest
 
 from samovar_balloon import (
@@ -155,7 +156,10 @@ class TestConstructor(unittest.TestCase):
             {"mass_kg": "150"},
             {"mass_kg": True},
             {"balloon_volume_m3": None},
+            {"balloon_volume_m3": True},
+            {"max_speed_kmh": True},
             {"steam": "50"},
+            {"steam": True},
         ]
         for overrides in cases:
             with self.subTest(overrides=overrides):
@@ -380,8 +384,10 @@ class TestCalculateSteam(unittest.TestCase):
             with self.subTest(args=args):
                 with self.assertRaises(ValueError):
                     samovar.calculate_steam(*args)
-        with self.assertRaises(TypeError):
-            samovar.calculate_steam("1", "air")
+        for args in (("1", "air"), (True, "air"), (1, 1)):
+            with self.subTest(args=args):
+                with self.assertRaises(TypeError):
+                    samovar.calculate_steam(*args)
 
 
 class TestCanOvercome(unittest.TestCase):
@@ -457,6 +463,7 @@ class TestAddCoal(unittest.TestCase):
                 # Assert
                 self.assertIsNone(result)
                 self.assertAlmostEqual(samovar.steam, expected, places=PLACES)
+                self.assertIsInstance(samovar.steam, float)
 
     def test_tc21_add_coal_invalid(self):
         """TC-21. Неположительный или нечисловой уголь отвергается."""
@@ -612,6 +619,32 @@ class TestStatusAndExceptions(unittest.TestCase):
         error = SamovarOutOfSteam(required=6, available=2)
         self.assertAlmostEqual(error.required, 6.0, places=PLACES)
         self.assertAlmostEqual(error.available, 2.0, places=PLACES)
+
+    def test_tc34_non_finite_numbers_raise(self):
+        """TC-34. nan, inf и -inf → ValueError, состояние не меняется."""
+        nan, inf = math.nan, math.inf
+        for overrides in ({"mass_kg": nan}, {"balloon_volume_m3": inf},
+                          {"max_speed_kmh": -inf}, {"steam": nan}):
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(ValueError):
+                    make_samovar(**overrides)
+
+        # Arrange
+        samovar = make_samovar(steam=50)
+        before = snapshot(samovar)
+        calls = [
+            ("move(inf)", lambda: samovar.move(inf, "air")),
+            ("move(nan)", lambda: samovar.move(nan, "air")),
+            ("calculate_steam(inf)", lambda: samovar.calculate_steam(inf, "air")),
+            ("add_coal(inf)", lambda: samovar.add_coal(inf)),
+            ("add_coal(nan)", lambda: samovar.add_coal(nan)),
+        ]
+        for label, call in calls:
+            with self.subTest(call=label):
+                # Act / Assert
+                with self.assertRaises(ValueError):
+                    call()
+                self.assertEqual(snapshot(samovar), before)
 
 
 # ---------------------------------------------------------------------------

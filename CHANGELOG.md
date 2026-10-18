@@ -13,5 +13,10 @@
 - Regression-тест: <TC-ID, имя метода>
 ```
 
+## [0.2] — до заморозки, по ревью Гурьянова М. (C-1…C-3)
+- 3.0, 3.2: nan/inf → ValueError; новый TC-34.
+- TC-05, TC-17: добавлены bool и неверный тип terrain; раздел 5 дополнен.
+- 3.4.4: `min(100.0, …)`; TC-20 проверяет тип float.
+
 ## [0.1] — до заморозки
 - Первая версия SPEC.md, TEST_CASES.md (TC-01…TC-33) и tests/test_samovar_balloon.py.
